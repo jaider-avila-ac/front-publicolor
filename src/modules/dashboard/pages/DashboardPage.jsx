@@ -33,10 +33,9 @@ export default function DashboardPage() {
 
       <section>
         <h2 className="text-sm font-semibold text-slate-500 mb-2">Ventas</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <StatTile label="Vendido hoy" value={formatCurrency(data.soldToday)} />
           <StatTile label="Vendido este mes" value={formatCurrency(data.soldMonth)} />
-          <StatTile label="Vendido histórico" value={formatCurrency(data.soldHistoric)} />
         </div>
       </section>
 
