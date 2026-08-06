@@ -72,6 +72,24 @@ export default function ReportsPage() {
     }
   }
 
+  const conceptColumns = [
+    {
+      key: 'concept',
+      label: 'Concepto',
+      primary: true,
+      render: (c) => (
+        <div>
+          <p className="font-medium text-slate-800">{c.productType}</p>
+          {c.description && <p className="text-xs text-slate-400 truncate">{c.description}</p>}
+        </div>
+      ),
+    },
+    { key: 'client', label: 'Cliente', primary: true, render: (c) => c.clientName },
+    { key: 'amount', label: 'Valor', primary: true, render: (c) => <span className="font-semibold">{formatCurrency(c.amount)}</span> },
+    { key: 'date', label: 'Fecha', render: (c) => formatDate(c.jobDate) },
+    { key: 'job', label: 'Trabajo', render: (c) => c.jobCode },
+  ]
+
   const columns = [
     { key: 'client', label: 'Cliente', primary: true, render: (c) => <span className="font-medium text-slate-800">{c.clientName}</span> },
     { key: 'sold', label: 'Vendido', primary: true, render: (c) => formatCurrency(c.totalSold) },
@@ -227,6 +245,16 @@ export default function ReportsPage() {
               <p className="font-bold text-slate-900">{formatCurrency(report.balance)}</p>
             </div>
           </div>
+
+          <section>
+            <h2 className="text-sm font-semibold text-slate-500 mb-2">Conceptos vendidos</h2>
+            <ResponsiveList
+              columns={conceptColumns}
+              rows={report.concepts}
+              keyExtractor={(c, idx) => `${c.jobId}-${idx}`}
+              emptyMessage="Sin conceptos en el rango seleccionado."
+            />
+          </section>
 
           <section>
             <h2 className="text-sm font-semibold text-slate-500 mb-2">Por cliente</h2>
