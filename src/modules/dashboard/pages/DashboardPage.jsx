@@ -1,28 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dashboardService } from '../../../services/dashboardService'
 import { formatCurrency } from '../../../utils/format'
+import { useCachedData } from '../../../hooks/useCachedData'
 import StatTile from '../components/StatTile'
 import StatusBadge from '../../../components/StatusBadge'
 import IncomeBarChart from '../components/IncomeBarChart'
 
 export default function DashboardPage() {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState('')
   const [granularity, setGranularity] = useState('day')
-  const [chartPoints, setChartPoints] = useState(null)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    dashboardService
-      .get()
-      .then(setData)
-      .catch((e) => setError(e.message))
-  }, [])
-
-  useEffect(() => {
-    dashboardService.getIncomeChart(granularity).then(setChartPoints)
-  }, [granularity])
+  // Al volver al Panel dentro de la misma sesión, se ve de una lo último que había
+  // (sin pantalla de "Cargando…") mientras se trae la versión fresca por detrás.
+  const { data, error } = useCachedData('dashboard', () => dashboardService.get(), [])
+  const { data: chartPoints } = useCachedData(
+    `income-chart:${granularity}`,
+    () => dashboardService.getIncomeChart(granularity),
+    [granularity],
+  )
 
   if (error) return <p className="text-rose-600 text-sm">{error}</p>
   if (!data) return <p className="text-slate-400 text-sm">Cargando…</p>

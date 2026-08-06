@@ -3,6 +3,7 @@ import { Plus, XCircle } from 'lucide-react'
 import { expenseService } from '../../../services/expenseService'
 import { lookupService } from '../../../services/lookupService'
 import { formatCurrency, formatDate, todayIso } from '../../../utils/format'
+import { useCachedData } from '../../../hooks/useCachedData'
 import ResponsiveList from '../../../components/ResponsiveList'
 import AnnulDialog from '../../../components/AnnulDialog'
 import { inputClass } from '../../../components/FormField'
@@ -10,7 +11,6 @@ import { inputClass } from '../../../components/FormField'
 const empty = { concept: '', amount: '', expenseDate: todayIso(), expenseCategoryId: '', notes: '' }
 
 export default function ExpensesPage() {
-  const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(empty)
@@ -21,21 +21,24 @@ export default function ExpensesPage() {
   const savingRef = useRef(false)
   const annullingRef = useRef(false)
 
-  function load() {
-    expenseService
-      .list({
+  // Al volver a Egresos dentro de la misma sesión, se ve de una la última lista
+  // (sin pantalla de "Cargando…") mientras se trae la versión fresca por detrás.
+  const cacheKey = `expenses:${filters.from}:${filters.to}:${filters.categoryId}`
+  const { data, refetch } = useCachedData(
+    cacheKey,
+    () =>
+      expenseService.list({
         from: filters.from || undefined,
         to: filters.to || undefined,
         categoryId: filters.categoryId || undefined,
-      })
-      .then((p) => setItems(p.content))
-  }
+      }),
+    [filters.from, filters.to, filters.categoryId],
+  )
+  const items = data?.content ?? []
 
   useEffect(() => {
-    load()
     lookupService.get().then((l) => setCategories(l.expenseCategories))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters])
+  }, [])
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -53,7 +56,7 @@ export default function ExpensesPage() {
       })
       setForm(empty)
       setShowForm(false)
-      load()
+      refetch()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -68,7 +71,7 @@ export default function ExpensesPage() {
     try {
       await expenseService.annul(annulItem.id, reason)
       setAnnulItem(null)
-      load()
+      refetch()
     } catch (err) {
       setError(err.message)
       setAnnulItem(null)

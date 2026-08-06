@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { clientService } from '../../../services/clientService'
 import { formatCurrency } from '../../../utils/format'
+import { useCachedData } from '../../../hooks/useCachedData'
 import ResponsiveList from '../../../components/ResponsiveList'
 import PendingAmount from '../../../components/PendingAmount'
 import { inputClass } from '../../../components/FormField'
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState([])
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
@@ -17,15 +18,19 @@ export default function ClientsPage() {
   const savingRef = useRef(false)
   const navigate = useNavigate()
 
-  function load(q) {
-    clientService.list(q).then((page) => setClients(page.content))
-  }
-
   useEffect(() => {
-    const timeout = setTimeout(() => load(search), 250)
+    const timeout = setTimeout(() => setDebouncedSearch(search), 250)
     return () => clearTimeout(timeout)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
+
+  // Al volver a Clientes dentro de la misma sesión, se ve de una la última lista
+  // (sin pantalla de "Cargando…") mientras se trae la versión fresca por detrás.
+  const {
+    data,
+    error: loadError,
+    refetch,
+  } = useCachedData(`clients:${debouncedSearch}`, () => clientService.list(debouncedSearch), [debouncedSearch])
+  const clients = data?.content ?? []
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -37,7 +42,7 @@ export default function ClientsPage() {
       await clientService.create(name)
       setName('')
       setShowForm(false)
-      load(search)
+      refetch()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -89,7 +94,7 @@ export default function ClientsPage() {
           </button>
         </form>
       )}
-      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {(error || loadError) && <p className="text-sm text-rose-600">{error || loadError}</p>}
 
       <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente por nombre…" className={inputClass} />
 

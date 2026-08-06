@@ -3,15 +3,17 @@ import { Download } from 'lucide-react'
 import { reportService } from '../../../services/reportService'
 import { clientService } from '../../../services/clientService'
 import { formatCurrency, formatDate, todayIso } from '../../../utils/format'
+import { useCachedData } from '../../../hooks/useCachedData'
 import { inputClass } from '../../../components/FormField'
 import ResponsiveList from '../../../components/ResponsiveList'
 import StatusBadge from '../../../components/StatusBadge'
 
-const PDF_TYPES = [
+const MOVEMENT_TYPES = [
   { value: 'BOTH', label: 'Ingresos y egresos' },
   { value: 'INCOMES', label: 'Solo ingresos' },
   { value: 'EXPENSES', label: 'Solo egresos' },
 ]
+const PDF_TYPES = MOVEMENT_TYPES
 
 const STATUSES = [
   { value: '', label: 'Todos los estados' },
@@ -22,10 +24,9 @@ const STATUSES = [
 ]
 
 export default function ReportsPage() {
-  const [filters, setFilters] = useState({ from: '', to: '', clientId: '', status: '' })
+  const [filters, setFilters] = useState({ from: '', to: '', clientId: '', status: '', type: 'BOTH' })
+  const [appliedFilters, setAppliedFilters] = useState(filters)
   const [clients, setClients] = useState([])
-  const [report, setReport] = useState(null)
-  const [error, setError] = useState('')
 
   const [pdfType, setPdfType] = useState('BOTH')
   const [pdfFrom, setPdfFrom] = useState(todayIso())
@@ -37,21 +38,26 @@ export default function ReportsPage() {
     clientService.list('').then((p) => setClients(p.content))
   }, [])
 
+  // Al volver a Reportes dentro de la misma sesión, se ve de una el último reporte
+  // (sin pantalla de "Cargando…") mientras se trae la versión fresca por detrás.
+  const cacheKey = `reports:${appliedFilters.from}:${appliedFilters.to}:${appliedFilters.clientId}:${appliedFilters.status}:${appliedFilters.type}`
+  const { data: report, error } = useCachedData(
+    cacheKey,
+    () =>
+      reportService.get({
+        from: appliedFilters.from || undefined,
+        to: appliedFilters.to || undefined,
+        clientId: appliedFilters.clientId || undefined,
+        status: appliedFilters.status || undefined,
+        type: appliedFilters.type,
+      }),
+    [appliedFilters.from, appliedFilters.to, appliedFilters.clientId, appliedFilters.status, appliedFilters.type],
+  )
+
   function runReport(e) {
     if (e) e.preventDefault()
-    setError('')
-    reportService
-      .get({
-        from: filters.from || undefined,
-        to: filters.to || undefined,
-        clientId: filters.clientId || undefined,
-        status: filters.status || undefined,
-      })
-      .then(setReport)
-      .catch((err) => setError(err.message))
+    setAppliedFilters(filters)
   }
-
-  useEffect(runReport, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleExportPdf(e) {
     e.preventDefault()
@@ -74,20 +80,42 @@ export default function ReportsPage() {
 
   const conceptColumns = [
     {
+      key: 'type',
+      label: 'Tipo',
+      render: (m) => (
+        <span className={m.type === 'EXPENSE' ? 'text-rose-600 font-medium' : 'text-emerald-600 font-medium'}>
+          {m.type === 'EXPENSE' ? 'Egreso' : 'Ingreso'}
+        </span>
+      ),
+    },
+    {
       key: 'concept',
       label: 'Concepto',
       primary: true,
-      render: (c) => (
+      render: (m) => (
         <div>
-          <p className="font-medium text-slate-800">{c.productType}</p>
-          {c.description && <p className="text-xs text-slate-400 truncate">{c.description}</p>}
+          <p className="font-medium text-slate-800">{m.concept}</p>
+          {(m.category || m.clientName) && (
+            <p className="text-xs text-slate-400 truncate">
+              {m.category}
+              {m.clientName ? ` · ${m.clientName}` : ''}
+            </p>
+          )}
         </div>
       ),
     },
-    { key: 'client', label: 'Cliente', primary: true, render: (c) => c.clientName },
-    { key: 'amount', label: 'Valor', primary: true, render: (c) => <span className="font-semibold">{formatCurrency(c.amount)}</span> },
-    { key: 'date', label: 'Fecha', render: (c) => formatDate(c.jobDate) },
-    { key: 'job', label: 'Trabajo', render: (c) => c.jobCode },
+    {
+      key: 'amount',
+      label: 'Valor',
+      primary: true,
+      render: (m) => (
+        <span className={`font-semibold ${m.type === 'EXPENSE' ? 'text-rose-600' : 'text-emerald-600'}`}>
+          {formatCurrency(m.amount)}
+        </span>
+      ),
+    },
+    { key: 'date', label: 'Fecha', render: (m) => formatDate(m.date) },
+    { key: 'code', label: 'Código', render: (m) => m.code },
   ]
 
   const columns = [
@@ -210,6 +238,16 @@ export default function ReportsPage() {
             ))}
           </select>
         </label>
+        <label>
+          <span className="block text-xs font-medium text-slate-600 mb-1">Movimientos a listar</span>
+          <select value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value })} className={inputClass}>
+            {MOVEMENT_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <button type="submit" className="col-span-2 md:col-span-4 bg-brand hover:bg-brand-dark text-white font-semibold py-2.5 text-sm">
           Consultar
         </button>
@@ -247,12 +285,12 @@ export default function ReportsPage() {
           </div>
 
           <section>
-            <h2 className="text-sm font-semibold text-slate-500 mb-2">Conceptos vendidos</h2>
+            <h2 className="text-sm font-semibold text-slate-500 mb-2">Movimientos por concepto</h2>
             <ResponsiveList
               columns={conceptColumns}
               rows={report.concepts}
-              keyExtractor={(c, idx) => `${c.jobId}-${idx}`}
-              emptyMessage="Sin conceptos en el rango seleccionado."
+              keyExtractor={(m, idx) => `${m.type}-${m.code}-${idx}`}
+              emptyMessage="Sin movimientos en el rango seleccionado."
             />
           </section>
 

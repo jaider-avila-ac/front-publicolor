@@ -4,6 +4,7 @@ import { Plus, HandCoins, Receipt } from 'lucide-react'
 import { jobService } from '../../../services/jobService'
 import { lookupService } from '../../../services/lookupService'
 import { formatCurrency, formatDate } from '../../../utils/format'
+import { useCachedData } from '../../../hooks/useCachedData'
 import ResponsiveList from '../../../components/ResponsiveList'
 import StatusBadge from '../../../components/StatusBadge'
 import PendingAmount from '../../../components/PendingAmount'
@@ -21,17 +22,16 @@ const STATUSES = [
 const PAGABLE = ['ABIERTA', 'PARCIALMENTE_PAGADA']
 
 export default function JobsPage() {
-  const [jobs, setJobs] = useState([])
-  const [lookups, setLookups] = useState(null)
   const [status, setStatus] = useState('')
   const [payModalJob, setPayModalJob] = useState(null)
+  const [lookups, setLookups] = useState(null)
   const navigate = useNavigate()
 
-  function load() {
-    jobService.list({ status: status || undefined }).then((page) => setJobs(page.content))
-  }
+  // Al volver a Trabajos dentro de la misma sesión, se ve de una la última lista
+  // (sin pantalla de "Cargando…") mientras se trae la versión fresca por detrás.
+  const { data, refetch } = useCachedData(`jobs:${status}`, () => jobService.list({ status: status || undefined }), [status])
+  const jobs = data?.content ?? []
 
-  useEffect(load, [status])
   useEffect(() => {
     lookupService.get().then(setLookups)
   }, [])
@@ -130,7 +130,7 @@ export default function JobsPage() {
           onClose={() => setPayModalJob(null)}
           onSuccess={() => {
             setPayModalJob(null)
-            load()
+            refetch()
           }}
         />
       )}

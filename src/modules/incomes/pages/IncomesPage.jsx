@@ -4,6 +4,7 @@ import { incomeService } from '../../../services/incomeService'
 import { paymentService } from '../../../services/paymentService'
 import { lookupService } from '../../../services/lookupService'
 import { formatCurrency, formatDate, todayIso } from '../../../utils/format'
+import { useCachedData } from '../../../hooks/useCachedData'
 import ResponsiveList from '../../../components/ResponsiveList'
 import AnnulDialog from '../../../components/AnnulDialog'
 import { inputClass } from '../../../components/FormField'
@@ -11,7 +12,6 @@ import { inputClass } from '../../../components/FormField'
 const empty = { concept: '', amount: '', incomeDate: todayIso(), incomeCategoryId: '', notes: '' }
 
 export default function IncomesPage() {
-  const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(empty)
@@ -22,21 +22,23 @@ export default function IncomesPage() {
   const savingRef = useRef(false)
   const annullingRef = useRef(false)
 
-  function load() {
-    incomeService
-      .listCombined({
+  // Al volver a Ingresos dentro de la misma sesión, se ve de una la última lista
+  // (sin pantalla de "Cargando…") mientras se trae la versión fresca por detrás.
+  const cacheKey = `incomes:${filters.from}:${filters.to}:${filters.categoryId}`
+  const { data: items, refetch } = useCachedData(
+    cacheKey,
+    () =>
+      incomeService.listCombined({
         from: filters.from || undefined,
         to: filters.to || undefined,
         categoryId: filters.categoryId || undefined,
-      })
-      .then(setItems)
-  }
+      }),
+    [filters.from, filters.to, filters.categoryId],
+  )
 
   useEffect(() => {
-    load()
     lookupService.get().then((l) => setCategories(l.incomeCategories))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters])
+  }, [])
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -54,7 +56,7 @@ export default function IncomesPage() {
       })
       setForm(empty)
       setShowForm(false)
-      load()
+      refetch()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -74,7 +76,7 @@ export default function IncomesPage() {
         await incomeService.annul(annulItem.id, reason)
       }
       setAnnulItem(null)
-      load()
+      refetch()
     } catch (err) {
       setError(err.message)
       setAnnulItem(null)
@@ -227,7 +229,7 @@ export default function IncomesPage() {
         </label>
       </div>
 
-      <ResponsiveList columns={columns} rows={items} keyExtractor={(i) => `${i.source}-${i.id}`} emptyMessage="No hay ingresos registrados." />
+      <ResponsiveList columns={columns} rows={items ?? []} keyExtractor={(i) => `${i.source}-${i.id}`} emptyMessage="No hay ingresos registrados." />
 
       <AnnulDialog
         open={!!annulItem}
