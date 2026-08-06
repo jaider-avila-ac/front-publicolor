@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatCurrency } from '../../../utils/format'
 
 const CHART_HEIGHT = 140
@@ -20,6 +20,15 @@ function monthLabel(period) {
 
 export default function IncomeBarChart({ points, granularity }) {
   const [hoverIdx, setHoverIdx] = useState(null)
+  const scrollRef = useRef(null)
+
+  // Al cargar (o cambiar de día/mes), arranca mostrando el extremo derecho —
+  // hoy, o el mes actual — en vez de dejar al usuario en el día 1 y obligarlo a scrollear.
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
+    }
+  }, [points])
 
   if (!points || points.length === 0) {
     return <p className="text-slate-400 text-sm">Sin datos todavía.</p>
@@ -29,7 +38,11 @@ export default function IncomeBarChart({ points, granularity }) {
   const label = granularity === 'month' ? monthLabel : dayLabel
 
   return (
-    <div className="overflow-x-auto border border-slate-200 bg-white p-4">
+    <div
+      ref={scrollRef}
+      className="overflow-x-auto border border-slate-200 bg-white p-4"
+      style={{ WebkitOverflowScrolling: 'touch' }}
+    >
       <div
         className="flex items-end gap-[10px]"
         style={{ height: CHART_HEIGHT + 28, minWidth: points.length * (BAR_WIDTH + BAR_GAP) }}
