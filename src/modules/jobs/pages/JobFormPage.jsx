@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, X } from 'lucide-react'
 import { jobService } from '../../../services/jobService'
 import { clientService } from '../../../services/clientService'
 import { lookupService } from '../../../services/lookupService'
@@ -14,6 +14,7 @@ export default function JobFormPage() {
   const [lookups, setLookups] = useState(null)
   const [clients, setClients] = useState([])
   const [clientName, setClientName] = useState(searchParams.get('clientName') || '')
+  const [selectedClient, setSelectedClient] = useState(null)
   const [jobDate, setJobDate] = useState(todayIso())
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState([])
@@ -26,8 +27,25 @@ export default function JobFormPage() {
 
   useEffect(() => {
     lookupService.get().then(setLookups)
-    clientService.list('').then((p) => setClients(p.content))
+    clientService.list('').then((p) => {
+      setClients(p.content)
+      const match = p.content.find((c) => c.name === clientName)
+      if (match) setSelectedClient(match)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  function handleClientNameChange(e) {
+    const value = e.target.value.toUpperCase()
+    setClientName(value)
+    const match = clients.find((c) => c.name === value)
+    if (match) setSelectedClient(match)
+  }
+
+  function clearClientSelection() {
+    setSelectedClient(null)
+    setClientName('')
+  }
 
   function addItem(payload) {
     setItems((prev) => [...prev, payload])
@@ -53,7 +71,8 @@ export default function JobFormPage() {
     setSaving(true)
     try {
       const job = await jobService.create({
-        clientName: clientName.trim(),
+        clientId: selectedClient?.id,
+        clientName: selectedClient ? undefined : clientName.trim(),
         jobDate,
         totalAmount: itemsSum,
         notes: notes || null,
@@ -83,21 +102,36 @@ export default function JobFormPage() {
       <div className="space-y-4">
         <label className="block">
           <span className="block text-sm font-medium text-slate-700 mb-1">Cliente *</span>
-          <input
-            required
-            list="clientes-existentes"
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value.toUpperCase())}
-            placeholder="Nombre del cliente"
-            className={inputClass + ' uppercase placeholder:normal-case'}
-          />
+          <div className="relative">
+            <input
+              required
+              list="clientes-existentes"
+              value={clientName}
+              onChange={handleClientNameChange}
+              readOnly={!!selectedClient}
+              placeholder="Nombre del cliente"
+              className={inputClass + ' uppercase placeholder:normal-case' + (selectedClient ? ' bg-slate-50 pr-9' : '')}
+            />
+            {selectedClient && (
+              <button
+                type="button"
+                onClick={clearClientSelection}
+                title="Cambiar cliente"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
           <datalist id="clientes-existentes">
             {clients.map((c) => (
               <option key={c.id} value={c.name} />
             ))}
           </datalist>
           <p className="text-xs text-slate-400 mt-1">
-            Si el cliente ya existe se usa; si no, se crea automáticamente con este nombre.
+            {selectedClient
+              ? 'Cliente existente seleccionado. Tocá la X para elegir otro.'
+              : 'Si el cliente ya existe se usa; si no, se crea automáticamente con este nombre.'}
           </p>
         </label>
 
