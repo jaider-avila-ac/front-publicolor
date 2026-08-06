@@ -1,8 +1,8 @@
-const STYLES = {
-  ABIERTA: 'bg-amber-50 text-amber-700',
-  PARCIALMENTE_PAGADA: 'bg-blue-50 text-blue-700',
-  PAGADA: 'bg-emerald-50 text-emerald-700',
-  CANCELADA: 'bg-slate-100 text-slate-500',
+const DOT_COLOR = {
+  ABIERTA: 'bg-amber-500',
+  PARCIALMENTE_PAGADA: 'bg-blue-600',
+  PAGADA: 'bg-emerald-600',
+  CANCELADA: 'bg-slate-400',
 }
 
 const LABELS = {
@@ -14,7 +14,8 @@ const LABELS = {
 
 export default function StatusBadge({ status }) {
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STYLES[status] || 'bg-slate-100 text-slate-500'}`}>
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+      <span className={`w-1.5 h-1.5 ${DOT_COLOR[status] || 'bg-slate-400'}`} />
       {LABELS[status] || status}
     </span>
   )

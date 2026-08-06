@@ -4,30 +4,29 @@ import { inputClass } from '../../../components/FormField'
 const empty = {
   productTypeId: '',
   description: '',
-  quantity: '',
-  width: '',
-  height: '',
-  finishId: '',
-  laminationId: '',
-  unitPrice: '',
+  finishIds: [],
+  laminationIds: [],
   totalAmount: '',
   notes: '',
 }
 
 function toPayload(form) {
-  const num = (v) => (v === '' || v === null ? null : Number(v))
   return {
     productTypeId: Number(form.productTypeId),
     description: form.description || null,
-    quantity: num(form.quantity),
-    width: num(form.width),
-    height: num(form.height),
-    finishId: form.finishId ? Number(form.finishId) : null,
-    laminationId: form.laminationId ? Number(form.laminationId) : null,
-    unitPrice: num(form.unitPrice),
+    quantity: null,
+    width: null,
+    height: null,
+    finishIds: form.finishIds,
+    laminationIds: form.laminationIds,
+    unitPrice: null,
     totalAmount: Number(form.totalAmount),
     notes: form.notes || null,
   }
+}
+
+function toggleId(list, id) {
+  return list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
 }
 
 export default function ConceptoForm({ lookups, initialValue, onSubmit, onCancel }) {
@@ -36,12 +35,8 @@ export default function ConceptoForm({ lookups, initialValue, onSubmit, onCancel
       ? {
           productTypeId: initialValue.productType?.id ?? '',
           description: initialValue.description ?? '',
-          quantity: initialValue.quantity ?? '',
-          width: initialValue.width ?? '',
-          height: initialValue.height ?? '',
-          finishId: initialValue.finish?.id ?? '',
-          laminationId: initialValue.lamination?.id ?? '',
-          unitPrice: initialValue.unitPrice ?? '',
+          finishIds: (initialValue.finishes ?? []).map((f) => f.id),
+          laminationIds: (initialValue.laminations ?? []).map((l) => l.id),
           totalAmount: initialValue.totalAmount ?? '',
           notes: initialValue.notes ?? '',
         }
@@ -58,57 +53,65 @@ export default function ConceptoForm({ lookups, initialValue, onSubmit, onCancel
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border border-slate-200 rounded-lg p-4 space-y-3 bg-slate-50">
+    <form onSubmit={handleSubmit} className="border border-slate-200 p-4 space-y-3 bg-slate-50">
       <div className="grid grid-cols-2 gap-3">
         <label className="col-span-2 sm:col-span-1">
           <span className="block text-xs font-medium text-slate-600 mb-1">Producto *</span>
           <select required value={form.productTypeId} onChange={set('productTypeId')} className={inputClass}>
             <option value="">Seleccionar…</option>
             {lookups.productTypes.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
             ))}
           </select>
         </label>
         <label className="col-span-2 sm:col-span-1">
           <span className="block text-xs font-medium text-slate-600 mb-1">Descripción</span>
-          <input value={form.description} onChange={set('description')} className={inputClass} />
+          <input value={form.description} onChange={set('description')} placeholder="Ej: 2m x 1m" className={inputClass} />
         </label>
 
-        <label>
-          <span className="block text-xs font-medium text-slate-600 mb-1">Cantidad</span>
-          <input type="number" step="0.01" min="0" value={form.quantity} onChange={set('quantity')} className={inputClass} />
-        </label>
-        <label>
-          <span className="block text-xs font-medium text-slate-600 mb-1">Ancho</span>
-          <input type="number" step="0.01" min="0" value={form.width} onChange={set('width')} className={inputClass} />
-        </label>
-        <label>
-          <span className="block text-xs font-medium text-slate-600 mb-1">Alto</span>
-          <input type="number" step="0.01" min="0" value={form.height} onChange={set('height')} className={inputClass} />
-        </label>
-        <label>
-          <span className="block text-xs font-medium text-slate-600 mb-1">Precio unitario</span>
-          <input type="number" step="0.01" min="0" value={form.unitPrice} onChange={set('unitPrice')} className={inputClass} />
-        </label>
+        <div className="col-span-2 sm:col-span-1">
+          <details open={form.finishIds.length > 0}>
+            <summary className="text-xs font-medium text-slate-600 cursor-pointer select-none">
+              Acabado{form.finishIds.length > 0 ? ` (${form.finishIds.length})` : ''}
+            </summary>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2">
+              {lookups.finishes.map((f) => (
+                <label key={f.id} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.finishIds.includes(f.id)}
+                    onChange={() => setForm((prev) => ({ ...prev, finishIds: toggleId(prev.finishIds, f.id) }))}
+                    className="accent-brand"
+                  />
+                  {f.name}
+                </label>
+              ))}
+            </div>
+          </details>
+        </div>
 
-        <label>
-          <span className="block text-xs font-medium text-slate-600 mb-1">Acabado</span>
-          <select value={form.finishId} onChange={set('finishId')} className={inputClass}>
-            <option value="">No aplica</option>
-            {lookups.finishes.map((f) => (
-              <option key={f.id} value={f.id}>{f.name}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="block text-xs font-medium text-slate-600 mb-1">Laminado</span>
-          <select value={form.laminationId} onChange={set('laminationId')} className={inputClass}>
-            <option value="">Sin laminado</option>
-            {lookups.laminations.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-        </label>
+        <div className="col-span-2 sm:col-span-1">
+          <details open={form.laminationIds.length > 0}>
+            <summary className="text-xs font-medium text-slate-600 cursor-pointer select-none">
+              Laminado{form.laminationIds.length > 0 ? ` (${form.laminationIds.length})` : ''}
+            </summary>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2">
+              {lookups.laminations.map((l) => (
+                <label key={l.id} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.laminationIds.includes(l.id)}
+                    onChange={() => setForm((prev) => ({ ...prev, laminationIds: toggleId(prev.laminationIds, l.id) }))}
+                    className="accent-brand"
+                  />
+                  {l.name}
+                </label>
+              ))}
+            </div>
+          </details>
+        </div>
 
         <label className="col-span-2">
           <span className="block text-xs font-medium text-slate-600 mb-1">Valor del concepto *</span>
@@ -126,7 +129,7 @@ export default function ConceptoForm({ lookups, initialValue, onSubmit, onCancel
             Cancelar
           </button>
         )}
-        <button type="submit" className="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-4 py-2 rounded-lg">
+        <button type="submit" className="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-4 py-2">
           Guardar concepto
         </button>
       </div>

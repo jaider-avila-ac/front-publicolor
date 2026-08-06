@@ -14,6 +14,7 @@ import ReceiptPage from './modules/receipt/pages/ReceiptPage'
 import IncomesPage from './modules/incomes/pages/IncomesPage'
 import ExpensesPage from './modules/expenses/pages/ExpensesPage'
 import ReportsPage from './modules/reports/pages/ReportsPage'
+import CatalogsPage from './modules/catalogs/pages/CatalogsPage'
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
               <Route path="ingresos" element={<IncomesPage />} />
               <Route path="egresos" element={<ExpensesPage />} />
               <Route path="reportes" element={<ReportsPage />} />
+              <Route path="catalogos" element={<CatalogsPage />} />
             </Route>
             {/* El recibo se muestra a pantalla completa, sin el layout de navegación */}
             <Route path="trabajos/:id/recibo" element={<ReceiptPage />} />

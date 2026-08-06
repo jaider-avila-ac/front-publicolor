@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, Briefcase, TrendingUp, TrendingDown, BarChart3, LogOut, X } from 'lucide-react'
+import { LayoutDashboard, Users, Briefcase, TrendingUp, TrendingDown, BarChart3, ListTree, LogOut, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV = [
@@ -9,6 +9,7 @@ const NAV = [
   { to: '/ingresos', icon: TrendingUp, label: 'Ingresos' },
   { to: '/egresos', icon: TrendingDown, label: 'Egresos' },
   { to: '/reportes', icon: BarChart3, label: 'Reportes' },
+  { to: '/catalogos', icon: ListTree, label: 'Catálogos' },
 ]
 
 export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }) {
@@ -17,9 +18,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
 
   return (
     <>
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={onMobileClose} />
-      )}
+      {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={onMobileClose} />}
 
       <aside
         className={[
@@ -32,11 +31,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
       >
         <div className="flex items-center justify-between px-5 h-16 border-b border-slate-100 shrink-0">
           <span className="text-xl font-bold tracking-tight text-brand">Publicolor</span>
-          <button
-            onClick={onMobileClose}
-            className="md:hidden p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
-            aria-label="Cerrar menú"
-          >
+          <button onClick={onMobileClose} className="md:hidden p-1.5 text-slate-400 hover:text-slate-600" aria-label="Cerrar menú">
             <X size={18} />
           </button>
         </div>
@@ -50,8 +45,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
               onClick={onMobileClose}
               className={({ isActive }) =>
                 [
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] transition-colors',
-                  isActive ? 'bg-brand/10 text-brand font-semibold' : 'text-slate-600 hover:bg-slate-50',
+                  'flex items-center gap-3 px-3 py-2.5 text-[15px] transition-colors',
+                  isActive ? 'bg-brand text-white font-semibold' : 'text-slate-600 hover:bg-slate-100',
                 ].join(' ')
               }
             >
@@ -63,7 +58,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
 
         <div className="border-t border-slate-100 p-4">
           <div className="flex items-center gap-3 mb-3 px-1">
-            <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold shrink-0">
+            <div className="w-8 h-8 bg-brand text-white flex items-center justify-center text-sm font-bold shrink-0">
               {(user?.name || '?')[0].toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -72,8 +67,11 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
             </div>
           </div>
           <button
-            onClick={() => { logout(); navigate('/login') }}
-            className="w-full flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium py-2 rounded-lg transition-colors"
+            onClick={() => {
+              logout()
+              navigate('/login')
+            }}
+            className="w-full flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium py-2 transition-colors"
           >
             <LogOut size={15} />
             Cerrar sesión

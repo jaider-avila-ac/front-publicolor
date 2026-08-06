@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import { clientService } from '../../../services/clientService'
 import { formatCurrency } from '../../../utils/format'
 import ResponsiveList from '../../../components/ResponsiveList'
+import PendingAmount from '../../../components/PendingAmount'
 import { inputClass } from '../../../components/FormField'
 
 export default function ClientsPage() {
@@ -39,17 +40,14 @@ export default function ClientsPage() {
 
   const columns = [
     { key: 'name', label: 'Cliente', primary: true, render: (c) => <span className="font-medium text-slate-800">{c.name}</span> },
-    { key: 'purchased', label: 'Comprado', primary: true, render: (c) => <span className="font-semibold">{formatCurrency(c.totalPurchased)}</span> },
-    { key: 'paid', label: 'Pagado', render: (c) => formatCurrency(c.totalPaid) },
     {
-      key: 'pending',
-      label: 'Pendiente',
-      render: (c) => (
-        <span className={Number(c.totalPending) > 0 ? 'text-rose-600 font-medium' : 'text-slate-500'}>
-          {formatCurrency(c.totalPending)}
-        </span>
-      ),
+      key: 'purchased',
+      label: 'Comprado',
+      primary: true,
+      render: (c) => <span className="font-semibold">{formatCurrency(c.totalPurchased)}</span>,
     },
+    { key: 'paid', label: 'Pagado', render: (c) => formatCurrency(c.totalPaid) },
+    { key: 'pending', label: 'Pendiente', render: (c) => <PendingAmount amount={c.totalPending} /> },
   ]
 
   return (
@@ -58,14 +56,14 @@ export default function ClientsPage() {
         <h1 className="text-xl font-bold text-slate-900">Clientes</h1>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-3.5 py-2 rounded-lg"
+          className="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-3.5 py-2"
         >
           <Plus size={16} /> Nuevo
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white border border-slate-200 rounded-lg p-4 flex flex-col sm:flex-row gap-3">
+        <form onSubmit={handleCreate} className="bg-white border border-slate-200 p-4 flex flex-col sm:flex-row gap-3">
           <input
             autoFocus
             required
@@ -74,19 +72,14 @@ export default function ClientsPage() {
             placeholder="Nombre del cliente"
             className={inputClass + ' flex-1 uppercase placeholder:normal-case'}
           />
-          <button type="submit" className="bg-brand hover:bg-brand-dark text-white font-semibold px-4 py-2.5 rounded-lg text-sm">
+          <button type="submit" className="bg-brand hover:bg-brand-dark text-white font-semibold px-4 py-2.5 text-sm">
             Guardar
           </button>
         </form>
       )}
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Buscar cliente por nombre…"
-        className={inputClass}
-      />
+      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente por nombre…" className={inputClass} />
 
       <ResponsiveList
         columns={columns}

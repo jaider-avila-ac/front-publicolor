@@ -11,7 +11,10 @@ export default function DashboardPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    dashboardService.get().then(setData).catch((e) => setError(e.message))
+    dashboardService
+      .get()
+      .then(setData)
+      .catch((e) => setError(e.message))
   }, [])
 
   if (error) return <p className="text-rose-600 text-sm">{error}</p>
@@ -60,11 +63,11 @@ export default function DashboardPage() {
               <div
                 key={job.id}
                 onClick={() => navigate(`/trabajos/${job.id}`)}
-                className="rounded-lg border border-slate-200 bg-white p-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50"
+                className=" border border-slate-200 bg-white p-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50"
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-800 truncate">{job.title}</p>
-                  <p className="text-xs text-slate-400 truncate">{job.client.name}</p>
+                  <p className="font-medium text-slate-800 truncate">{job.client.name}</p>
+                  <p className="text-xs text-slate-400 truncate">{job.code}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-semibold text-slate-800">{formatCurrency(job.totalAmount)}</p>

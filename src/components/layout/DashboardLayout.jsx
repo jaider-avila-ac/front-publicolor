@@ -12,11 +12,7 @@ export default function DashboardLayout() {
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <header className="md:hidden flex items-center gap-3 px-4 h-14 border-b border-slate-200 bg-white shrink-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-1.5 -ml-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
-            aria-label="Abrir menú"
-          >
+          <button onClick={() => setSidebarOpen(true)} className="p-1.5 -ml-1.5 text-slate-500 hover:bg-slate-100" aria-label="Abrir menú">
             <Menu size={20} />
           </button>
           <span className="text-lg font-bold text-brand">Publicolor</span>

@@ -17,7 +17,7 @@ export default function ResponsiveList({ columns, rows, keyExtractor, onRowClick
   return (
     <>
       {/* Escritorio */}
-      <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="hidden md:block overflow-x-auto border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
@@ -51,7 +51,7 @@ export default function ResponsiveList({ columns, rows, keyExtractor, onRowClick
         {rows.map((row) => (
           <div
             key={keyExtractor(row)}
-            className="rounded-lg border border-slate-200 bg-white p-3"
+            className=" border border-slate-200 bg-white p-3"
             onClick={onRowClick ? () => onRowClick(row) : undefined}
           >
             <div className={`flex items-center justify-between gap-3 ${onRowClick ? 'cursor-pointer' : ''}`}>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Pencil, Receipt, Ban } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Pencil, Receipt, Ban, XCircle } from 'lucide-react'
 import { jobService } from '../../../services/jobService'
 import { paymentService } from '../../../services/paymentService'
 import { lookupService } from '../../../services/lookupService'
@@ -8,6 +8,7 @@ import { formatCurrency, formatDate, todayIso } from '../../../utils/format'
 import { inputClass } from '../../../components/FormField'
 import StatusBadge from '../../../components/StatusBadge'
 import ConfirmDialog from '../../../components/ConfirmDialog'
+import AnnulDialog from '../../../components/AnnulDialog'
 import ConceptoForm from '../components/ConceptoForm'
 
 const EDITABLE = ['ABIERTA', 'PARCIALMENTE_PAGADA']
@@ -32,8 +33,27 @@ export default function JobDetailPage() {
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [cancelNeedsForce, setCancelNeedsForce] = useState(false)
 
-  function load() {
-    jobService.get(id).then(setJob)
+  const [annulPayment, setAnnulPayment] = useState(null)
+
+  function buildTotal(conceptos) {
+    return conceptos.reduce((acc, it) => acc + Number(it.totalAmount || 0), 0)
+  }
+
+  async function load() {
+    const fresh = await jobService.get(id)
+    const expectedTotal = buildTotal(fresh.items)
+    // El valor total se arma solo a partir de los conceptos — se resincroniza mientras el trabajo siga editable.
+    const needsSync = EDITABLE.includes(fresh.status) && expectedTotal !== Number(fresh.totalAmount)
+    if (needsSync) {
+      const updated = await jobService.update(id, {
+        jobDate: fresh.jobDate,
+        totalAmount: expectedTotal,
+        notes: fresh.notes,
+      })
+      setJob(updated)
+    } else {
+      setJob(fresh)
+    }
     paymentService.listByJob(id).then(setPayments)
   }
 
@@ -48,7 +68,7 @@ export default function JobDetailPage() {
   const editable = EDITABLE.includes(job.status)
 
   function startEditMeta() {
-    setMetaForm({ title: job.title, jobDate: job.jobDate, totalAmount: job.totalAmount, notes: job.notes || '' })
+    setMetaForm({ jobDate: job.jobDate, notes: job.notes || '' })
     setEditingMeta(true)
   }
 
@@ -57,9 +77,8 @@ export default function JobDetailPage() {
     setError('')
     try {
       await jobService.update(id, {
-        title: metaForm.title,
         jobDate: metaForm.jobDate,
-        totalAmount: Number(metaForm.totalAmount),
+        totalAmount: job.totalAmount,
         notes: metaForm.notes || null,
       })
       setEditingMeta(false)
@@ -110,6 +129,18 @@ export default function JobDetailPage() {
     }
   }
 
+  async function submitAnnulPayment(reason) {
+    if (!annulPayment) return
+    try {
+      await paymentService.annul(annulPayment.id, reason)
+      setAnnulPayment(null)
+      load()
+    } catch (err) {
+      setError(err.message)
+      setAnnulPayment(null)
+    }
+  }
+
   async function submitCancel(force = false) {
     try {
       await jobService.cancel(id, force)
@@ -135,33 +166,40 @@ export default function JobDetailPage() {
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs text-slate-400">Trabajo #{job.consecutiveNumber} · {job.client.name}</p>
-            {editingMeta ? null : <h1 className="text-xl font-bold text-slate-900">{job.title}</h1>}
+            <p className="text-xs text-slate-400">{job.code}</p>
+            <h1 className="text-xl font-bold text-slate-900">{job.client.name}</h1>
           </div>
           <StatusBadge status={job.status} />
         </div>
 
         {editingMeta ? (
-          <form onSubmit={saveMeta} className="space-y-3 bg-white border border-slate-200 rounded-lg p-4">
-            <label className="block">
-              <span className="block text-xs font-medium text-slate-600 mb-1">Título</span>
-              <input required value={metaForm.title} onChange={(e) => setMetaForm({ ...metaForm, title: e.target.value })} className={inputClass} />
-            </label>
+          <form onSubmit={saveMeta} className="space-y-3 bg-white border border-slate-200 p-4">
             <label className="block">
               <span className="block text-xs font-medium text-slate-600 mb-1">Fecha</span>
-              <input required type="date" value={metaForm.jobDate} onChange={(e) => setMetaForm({ ...metaForm, jobDate: e.target.value })} className={inputClass} />
-            </label>
-            <label className="block">
-              <span className="block text-xs font-medium text-slate-600 mb-1">Valor total</span>
-              <input required type="number" step="0.01" min="0" value={metaForm.totalAmount} onChange={(e) => setMetaForm({ ...metaForm, totalAmount: e.target.value })} className={inputClass} />
+              <input
+                required
+                type="date"
+                value={metaForm.jobDate}
+                onChange={(e) => setMetaForm({ ...metaForm, jobDate: e.target.value })}
+                className={inputClass}
+              />
             </label>
             <label className="block">
               <span className="block text-xs font-medium text-slate-600 mb-1">Observaciones</span>
-              <textarea value={metaForm.notes} onChange={(e) => setMetaForm({ ...metaForm, notes: e.target.value })} className={inputClass} rows={2} />
+              <textarea
+                value={metaForm.notes}
+                onChange={(e) => setMetaForm({ ...metaForm, notes: e.target.value })}
+                className={inputClass}
+                rows={2}
+              />
             </label>
             <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => setEditingMeta(false)} className="px-3 py-2 text-sm text-slate-600">Cancelar</button>
-              <button type="submit" className="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-4 py-2 rounded-lg">Guardar</button>
+              <button type="button" onClick={() => setEditingMeta(false)} className="px-3 py-2 text-sm text-slate-600">
+                Cancelar
+              </button>
+              <button type="submit" className="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-4 py-2">
+                Guardar
+              </button>
             </div>
           </form>
         ) : (
@@ -181,32 +219,38 @@ export default function JobDetailPage() {
 
       {/* Totales */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <div className=" border border-slate-200 bg-white p-3">
           <p className="text-xs text-slate-500 mb-1">Total</p>
           <p className="font-bold text-slate-900">{formatCurrency(job.totalAmount)}</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <div className=" border border-slate-200 bg-white p-3">
           <p className="text-xs text-slate-500 mb-1">Abonado</p>
           <p className="font-bold text-emerald-600">{formatCurrency(job.totalPaid)}</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <div className=" border border-slate-200 bg-white p-3">
           <p className="text-xs text-slate-500 mb-1">Pendiente</p>
           <p className="font-bold text-rose-600">{formatCurrency(job.pendingAmount)}</p>
         </div>
       </div>
 
+      {Number(job.creditApplied) > 0 && (
+        <p className="text-sm text-emerald-700 border border-emerald-600 px-3 py-2 font-medium">
+          Se aplicó automáticamente {formatCurrency(job.creditApplied)} de saldo a favor de este cliente.
+        </p>
+      )}
+
       {/* Acciones principales */}
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => navigate(`/trabajos/${id}/recibo`)}
-          className="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-3.5 py-2 rounded-lg"
+          className="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-3.5 py-2"
         >
           <Receipt size={16} /> Generar recibo de cobro
         </button>
         {job.status !== 'CANCELADA' && (
           <button
             onClick={() => setCancelConfirm(true)}
-            className="flex items-center gap-1.5 border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm font-medium px-3.5 py-2 rounded-lg"
+            className="flex items-center gap-1.5 border border-slate-300 text-slate-600 hover:bg-slate-50 text-sm font-medium px-3.5 py-2"
           >
             <Ban size={16} /> Cancelar cuenta
           </button>
@@ -235,10 +279,15 @@ export default function JobDetailPage() {
                 onCancel={() => setItemMode(null)}
               />
             ) : (
-              <div key={it.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
+              <div key={it.id} className="flex items-center justify-between gap-3 border border-slate-200 bg-white p-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-800">{it.productType.name}</p>
                   {it.description && <p className="text-xs text-slate-400 truncate">{it.description}</p>}
+                  {(it.finishes.length > 0 || it.laminations.length > 0) && (
+                    <p className="text-xs text-slate-400 truncate">
+                      {[...it.finishes.map((f) => f.name), ...it.laminations.map((l) => l.name)].join(' · ')}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-sm font-semibold">{formatCurrency(it.totalAmount)}</span>
@@ -272,19 +321,40 @@ export default function JobDetailPage() {
         {payments.length > 0 && (
           <div className="space-y-2 mb-3">
             {payments.map((p) => (
-              <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
+              <div
+                key={p.id}
+                className={`flex items-center justify-between gap-3 border border-slate-200 bg-white p-3 ${p.annulled ? 'opacity-60' : ''}`}
+              >
                 <div>
-                  <p className="text-sm text-slate-700">{formatDate(p.paymentDate)}</p>
+                  <p className={`text-sm ${p.annulled ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{formatDate(p.paymentDate)}</p>
+                  <p className="text-xs text-slate-400">{p.code}</p>
                   {p.paymentMethod && <p className="text-xs text-slate-400">{p.paymentMethod.name}</p>}
+                  {p.origin === 'CREDIT_APPLIED' && !p.annulled && (
+                    <p className="text-xs text-emerald-600 font-medium">Saldo a favor aplicado</p>
+                  )}
+                  {p.annulled && (
+                    <p className="text-xs text-rose-600 font-medium">
+                      Anulado{p.annulledReason ? `: ${p.annulledReason}` : ''}
+                    </p>
+                  )}
                 </div>
-                <span className="font-semibold text-emerald-600">{formatCurrency(p.amount)}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`font-semibold ${p.annulled ? 'text-slate-400 line-through' : 'text-emerald-600'}`}>
+                    {formatCurrency(p.amount)}
+                  </span>
+                  {!p.annulled && (
+                    <button title="Anular pago" onClick={() => setAnnulPayment(p)} className="text-slate-400 hover:text-rose-600">
+                      <XCircle size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         )}
 
         {job.status !== 'CANCELADA' && (
-          <form onSubmit={(e) => submitPayment(e, false)} className="space-y-3 bg-white border border-slate-200 rounded-lg p-4">
+          <form onSubmit={(e) => submitPayment(e, false)} className="space-y-3 bg-white border border-slate-200 p-4">
             <div className="grid grid-cols-2 gap-3">
               <label>
                 <span className="block text-xs font-medium text-slate-600 mb-1">Valor *</span>
@@ -317,7 +387,9 @@ export default function JobDetailPage() {
                 >
                   <option value="">Sin especificar</option>
                   {lookups.paymentMethods.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -327,7 +399,7 @@ export default function JobDetailPage() {
               </label>
             </div>
             {payError && <p className="text-sm text-rose-600">{payError}</p>}
-            <button type="submit" className="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-2.5 rounded-lg text-sm">
+            <button type="submit" className="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-2.5 text-sm">
               Registrar pago
             </button>
           </form>
@@ -343,6 +415,18 @@ export default function JobDetailPage() {
         onCancel={() => setOverpayConfirm(null)}
       />
 
+      <AnnulDialog
+        open={!!annulPayment}
+        title="Anular este pago"
+        message={
+          annulPayment
+            ? `Se va a anular el pago de ${formatCurrency(annulPayment.amount)} del ${formatDate(annulPayment.paymentDate)}. El trabajo va a volver a mostrar ese valor como pendiente.`
+            : ''
+        }
+        onConfirm={submitAnnulPayment}
+        onCancel={() => setAnnulPayment(null)}
+      />
+
       <ConfirmDialog
         open={cancelConfirm}
         title="Cancelar esta cuenta"
@@ -353,7 +437,10 @@ export default function JobDetailPage() {
         }
         confirmLabel="Sí, cancelar"
         onConfirm={() => submitCancel(cancelNeedsForce)}
-        onCancel={() => { setCancelConfirm(false); setCancelNeedsForce(false) }}
+        onCancel={() => {
+          setCancelConfirm(false)
+          setCancelNeedsForce(false)
+        }}
       />
     </div>
   )

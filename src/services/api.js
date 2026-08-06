@@ -14,9 +14,7 @@ function getToken() {
 export async function apiFetch(path, { method = 'GET', body, params } = {}) {
   let url = `${API_BASE}/api/v1${path}`
   if (params) {
-    const query = new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''),
-    ).toString()
+    const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')).toString()
     if (query) url += `?${query}`
   }
 
@@ -43,8 +41,37 @@ export async function apiFetch(path, { method = 'GET', body, params } = {}) {
     const err = new Error(data.message || 'Ocurrió un error inesperado.')
     err.status = res.status
     err.code = data.code
+    err.existingJobId = data.existingJobId
     throw err
   }
 
   return data
+}
+
+/** Igual que apiFetch, pero para respuestas binarias (ej. PDF) — devuelve un Blob. */
+export async function apiFetchBlob(path, { params, method = 'GET', body } = {}) {
+  let url = `${API_BASE}/api/v1${path}`
+  if (params) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')).toString()
+    if (query) url += `?${query}`
+  }
+
+  const token = getToken()
+  const headers = {}
+  if (token) headers.Authorization = `Bearer ${token}`
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+
+  const res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined })
+
+  if (res.status === 401) {
+    window.dispatchEvent(new CustomEvent('auth:expired'))
+    throw new Error('Sesión expirada')
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.message || 'No se pudo generar el archivo.')
+  }
+
+  return res.blob()
 }
