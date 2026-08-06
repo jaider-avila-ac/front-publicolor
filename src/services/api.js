@@ -1,6 +1,7 @@
 // El proxy de Vite (vite.config.js) reenvía /api al backend en desarrollo.
-// En producción, VITE_API_URL debe apuntar a la URL pública del backend.
-export const API_BASE = import.meta.env.VITE_API_URL ?? ''
+// En producción usa el backend de Publicolor directamente, sin depender de configurar
+// VITE_API_URL en Netlify (si igual se define esa variable, tiene prioridad sobre esto).
+export const API_BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? 'https://www.publicolor.zammpy.com' : '')
 
 function getToken() {
   try {
