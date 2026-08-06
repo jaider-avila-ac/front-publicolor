@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { clientService } from '../../../services/clientService'
@@ -13,6 +13,8 @@ export default function ClientsPage() {
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
   const navigate = useNavigate()
 
   function load(q) {
@@ -27,6 +29,9 @@ export default function ClientsPage() {
 
   async function handleCreate(e) {
     e.preventDefault()
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
     setError('')
     try {
       await clientService.create(name)
@@ -35,6 +40,9 @@ export default function ClientsPage() {
       load(search)
     } catch (err) {
       setError(err.message)
+    } finally {
+      savingRef.current = false
+      setSaving(false)
     }
   }
 
@@ -72,8 +80,12 @@ export default function ClientsPage() {
             placeholder="Nombre del cliente"
             className={inputClass + ' flex-1 uppercase placeholder:normal-case'}
           />
-          <button type="submit" className="bg-brand hover:bg-brand-dark text-white font-semibold px-4 py-2.5 text-sm">
-            Guardar
+          <button
+            type="submit"
+            disabled={saving}
+            className="bg-brand hover:bg-brand-dark disabled:opacity-60 text-white font-semibold px-4 py-2.5 text-sm"
+          >
+            {saving ? 'Guardando…' : 'Guardar'}
           </button>
         </form>
       )}

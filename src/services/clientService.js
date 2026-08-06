@@ -5,4 +5,5 @@ export const clientService = {
   get: (id) => apiFetch(`/clients/${id}`),
   create: (name) => apiFetch('/clients', { method: 'POST', body: { name } }),
   update: (id, name) => apiFetch(`/clients/${id}`, { method: 'PUT', body: { name } }),
+  remove: (id) => apiFetch(`/clients/${id}`, { method: 'DELETE' }),
 }

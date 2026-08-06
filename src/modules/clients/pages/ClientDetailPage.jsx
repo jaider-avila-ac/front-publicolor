@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Pencil, ArrowLeft, XCircle } from 'lucide-react'
+import { Pencil, ArrowLeft, XCircle, Trash2 } from 'lucide-react'
 import { clientService } from '../../../services/clientService'
 import { paymentService } from '../../../services/paymentService'
 import { formatCurrency, formatDate } from '../../../utils/format'
 import StatusBadge from '../../../components/StatusBadge'
 import AnnulDialog from '../../../components/AnnulDialog'
+import ConfirmDialog from '../../../components/ConfirmDialog'
 import { inputClass } from '../../../components/FormField'
 
 export default function ClientDetailPage() {
@@ -16,6 +17,14 @@ export default function ClientDetailPage() {
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [annulPayment, setAnnulPayment] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Guards de solo-lectura (useRef, no useState) para que un doble click no dispare la acción dos veces:
+  // el estado de React se actualiza async, así que el segundo click puede llegar antes del re-render.
+  const savingRef = useRef(false)
+  const annullingRef = useRef(false)
+  const deletingRef = useRef(false)
 
   function load() {
     clientService.get(id).then((c) => {
@@ -28,6 +37,8 @@ export default function ClientDetailPage() {
 
   async function handleSave(e) {
     e.preventDefault()
+    if (savingRef.current) return
+    savingRef.current = true
     setError('')
     try {
       await clientService.update(id, name)
@@ -35,11 +46,14 @@ export default function ClientDetailPage() {
       load()
     } catch (err) {
       setError(err.message)
+    } finally {
+      savingRef.current = false
     }
   }
 
   async function submitAnnulPayment(reason) {
-    if (!annulPayment) return
+    if (!annulPayment || annullingRef.current) return
+    annullingRef.current = true
     try {
       await paymentService.annul(annulPayment.id, reason)
       setAnnulPayment(null)
@@ -47,6 +61,25 @@ export default function ClientDetailPage() {
     } catch (err) {
       setError(err.message)
       setAnnulPayment(null)
+    } finally {
+      annullingRef.current = false
+    }
+  }
+
+  async function handleDelete() {
+    if (deletingRef.current) return
+    deletingRef.current = true
+    setDeleting(true)
+    setError('')
+    try {
+      await clientService.remove(id)
+      navigate('/clientes', { replace: true })
+    } catch (err) {
+      setError(err.message)
+      setDeleteConfirm(false)
+    } finally {
+      deletingRef.current = false
+      setDeleting(false)
     }
   }
 
@@ -80,6 +113,9 @@ export default function ClientDetailPage() {
           <h1 className="text-xl font-bold text-slate-900">{client.name}</h1>
           <button onClick={() => setEditing(true)} className="text-slate-400 hover:text-slate-600">
             <Pencil size={16} />
+          </button>
+          <button onClick={() => setDeleteConfirm(true)} title="Eliminar cliente" className="text-slate-400 hover:text-rose-600">
+            <Trash2 size={16} />
           </button>
         </div>
       )}
@@ -178,6 +214,15 @@ export default function ClientDetailPage() {
         }
         onConfirm={submitAnnulPayment}
         onCancel={() => setAnnulPayment(null)}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirm}
+        title="Eliminar este cliente"
+        message={`¿Seguro que querés eliminar a ${client.name}? Esta acción no se puede deshacer.`}
+        confirmLabel={deleting ? 'Eliminando…' : 'Sí, eliminar'}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirm(false)}
       />
     </div>
   )

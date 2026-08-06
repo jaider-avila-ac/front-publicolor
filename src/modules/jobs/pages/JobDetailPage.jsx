@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2, Pencil, Receipt, Ban, XCircle } from 'lucide-react'
 import { jobService } from '../../../services/jobService'
@@ -29,11 +29,19 @@ export default function JobDetailPage() {
   const [payForm, setPayForm] = useState({ amount: '', paymentDate: todayIso(), paymentMethodId: '', notes: '' })
   const [payError, setPayError] = useState('')
   const [overpayConfirm, setOverpayConfirm] = useState(null)
+  const [paying, setPaying] = useState(false)
+  const payingRef = useRef(false)
 
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [cancelNeedsForce, setCancelNeedsForce] = useState(false)
+  const cancellingRef = useRef(false)
 
   const [annulPayment, setAnnulPayment] = useState(null)
+  const annullingRef = useRef(false)
+
+  const [savingMeta, setSavingMeta] = useState(false)
+  const savingMetaRef = useRef(false)
+  const removingItemRef = useRef(false)
 
   function buildTotal(conceptos) {
     return conceptos.reduce((acc, it) => acc + Number(it.totalAmount || 0), 0)
@@ -74,6 +82,9 @@ export default function JobDetailPage() {
 
   async function saveMeta(e) {
     e.preventDefault()
+    if (savingMetaRef.current) return
+    savingMetaRef.current = true
+    setSavingMeta(true)
     setError('')
     try {
       await jobService.update(id, {
@@ -85,6 +96,9 @@ export default function JobDetailPage() {
       load()
     } catch (err) {
       setError(err.message)
+    } finally {
+      savingMetaRef.current = false
+      setSavingMeta(false)
     }
   }
 
@@ -101,12 +115,21 @@ export default function JobDetailPage() {
   }
 
   async function handleRemoveItem(itemId) {
-    await jobService.removeItem(id, itemId)
-    load()
+    if (removingItemRef.current) return
+    removingItemRef.current = true
+    try {
+      await jobService.removeItem(id, itemId)
+      load()
+    } finally {
+      removingItemRef.current = false
+    }
   }
 
   async function submitPayment(e, force = false) {
     if (e) e.preventDefault()
+    if (payingRef.current) return
+    payingRef.current = true
+    setPaying(true)
     setPayError('')
     try {
       await paymentService.create({
@@ -126,11 +149,15 @@ export default function JobDetailPage() {
       } else {
         setPayError(err.message)
       }
+    } finally {
+      payingRef.current = false
+      setPaying(false)
     }
   }
 
   async function submitAnnulPayment(reason) {
-    if (!annulPayment) return
+    if (!annulPayment || annullingRef.current) return
+    annullingRef.current = true
     try {
       await paymentService.annul(annulPayment.id, reason)
       setAnnulPayment(null)
@@ -138,10 +165,14 @@ export default function JobDetailPage() {
     } catch (err) {
       setError(err.message)
       setAnnulPayment(null)
+    } finally {
+      annullingRef.current = false
     }
   }
 
   async function submitCancel(force = false) {
+    if (cancellingRef.current) return
+    cancellingRef.current = true
     try {
       await jobService.cancel(id, force)
       setCancelConfirm(false)
@@ -153,6 +184,8 @@ export default function JobDetailPage() {
       } else {
         setError(err.message)
       }
+    } finally {
+      cancellingRef.current = false
     }
   }
 
@@ -194,11 +227,15 @@ export default function JobDetailPage() {
               />
             </label>
             <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => setEditingMeta(false)} className="px-3 py-2 text-sm text-slate-600">
+              <button type="button" onClick={() => setEditingMeta(false)} disabled={savingMeta} className="px-3 py-2 text-sm text-slate-600">
                 Cancelar
               </button>
-              <button type="submit" className="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-4 py-2">
-                Guardar
+              <button
+                type="submit"
+                disabled={savingMeta}
+                className="bg-brand hover:bg-brand-dark disabled:opacity-60 text-white text-sm font-semibold px-4 py-2"
+              >
+                {savingMeta ? 'Guardando…' : 'Guardar'}
               </button>
             </div>
           </form>
@@ -399,8 +436,12 @@ export default function JobDetailPage() {
               </label>
             </div>
             {payError && <p className="text-sm text-rose-600">{payError}</p>}
-            <button type="submit" className="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-2.5 text-sm">
-              Registrar pago
+            <button
+              type="submit"
+              disabled={paying}
+              className="w-full bg-brand hover:bg-brand-dark disabled:opacity-60 text-white font-semibold py-2.5 text-sm"
+            >
+              {paying ? 'Registrando…' : 'Registrar pago'}
             </button>
           </form>
         )}

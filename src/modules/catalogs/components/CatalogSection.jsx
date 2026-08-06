@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, Pencil, Check, X } from 'lucide-react'
 import { catalogAdminService } from '../../../services/catalogAdminService'
 import { inputClass } from '../../../components/FormField'
@@ -10,6 +10,10 @@ export default function CatalogSection({ type, title }) {
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editingName, setEditingName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+  const editingRef = useRef(false)
+  const togglingRef = useRef(false)
 
   function load() {
     catalogAdminService.list(type).then(setItems).catch((e) => setError(e.message))
@@ -19,6 +23,9 @@ export default function CatalogSection({ type, title }) {
 
   async function handleCreate(e) {
     e.preventDefault()
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
     setError('')
     try {
       await catalogAdminService.create(type, newName.trim())
@@ -27,6 +34,9 @@ export default function CatalogSection({ type, title }) {
       load()
     } catch (err) {
       setError(err.message)
+    } finally {
+      savingRef.current = false
+      setSaving(false)
     }
   }
 
@@ -36,6 +46,8 @@ export default function CatalogSection({ type, title }) {
   }
 
   async function saveEdit(item) {
+    if (editingRef.current) return
+    editingRef.current = true
     setError('')
     try {
       await catalogAdminService.update(type, item.id, { name: editingName.trim(), active: item.active })
@@ -43,16 +55,22 @@ export default function CatalogSection({ type, title }) {
       load()
     } catch (err) {
       setError(err.message)
+    } finally {
+      editingRef.current = false
     }
   }
 
   async function toggleActive(item) {
+    if (togglingRef.current) return
+    togglingRef.current = true
     setError('')
     try {
       await catalogAdminService.update(type, item.id, { name: item.name, active: !item.active })
       load()
     } catch (err) {
       setError(err.message)
+    } finally {
+      togglingRef.current = false
     }
   }
 
@@ -75,8 +93,8 @@ export default function CatalogSection({ type, title }) {
             className={inputClass + ' text-sm py-1.5'}
             placeholder="Nombre"
           />
-          <button type="submit" className="btn-primary py-1.5 px-3 text-xs">
-            Guardar
+          <button type="submit" disabled={saving} className="btn-primary py-1.5 px-3 text-xs disabled:opacity-60">
+            {saving ? 'Guardando…' : 'Guardar'}
           </button>
         </form>
       )}

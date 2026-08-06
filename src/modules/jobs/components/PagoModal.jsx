@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { paymentService } from '../../../services/paymentService'
 import { inputClass } from '../../../components/FormField'
@@ -12,9 +12,12 @@ export default function PagoModal({ job, lookups, onClose, onSuccess }) {
   const [error, setError] = useState('')
   const [overpayConfirm, setOverpayConfirm] = useState(null)
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   async function submit(e, force = false) {
     if (e) e.preventDefault()
+    if (savingRef.current) return
+    savingRef.current = true
     setError('')
     setSaving(true)
     try {
@@ -35,6 +38,7 @@ export default function PagoModal({ job, lookups, onClose, onSuccess }) {
         setError(err.message)
       }
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }

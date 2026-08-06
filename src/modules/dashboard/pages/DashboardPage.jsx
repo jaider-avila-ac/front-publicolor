@@ -4,10 +4,13 @@ import { dashboardService } from '../../../services/dashboardService'
 import { formatCurrency } from '../../../utils/format'
 import StatTile from '../components/StatTile'
 import StatusBadge from '../../../components/StatusBadge'
+import IncomeBarChart from '../components/IncomeBarChart'
 
 export default function DashboardPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
+  const [granularity, setGranularity] = useState('day')
+  const [chartPoints, setChartPoints] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -16,6 +19,10 @@ export default function DashboardPage() {
       .then(setData)
       .catch((e) => setError(e.message))
   }, [])
+
+  useEffect(() => {
+    dashboardService.getIncomeChart(granularity).then(setChartPoints)
+  }, [granularity])
 
   if (error) return <p className="text-rose-600 text-sm">{error}</p>
   if (!data) return <p className="text-slate-400 text-sm">Cargando…</p>
@@ -40,6 +47,27 @@ export default function DashboardPage() {
           <StatTile label="Recibido este mes" value={formatCurrency(data.receivedMonth)} tone="positive" />
           <StatTile label="Total pendiente por cobrar" value={formatCurrency(data.pendingTotal)} tone="negative" />
         </div>
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-slate-500">Ingresos</h2>
+          <div className="flex border border-slate-200">
+            <button
+              onClick={() => setGranularity('day')}
+              className={`px-3 py-1 text-xs font-medium ${granularity === 'day' ? 'bg-brand text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              Por día
+            </button>
+            <button
+              onClick={() => setGranularity('month')}
+              className={`px-3 py-1 text-xs font-medium ${granularity === 'month' ? 'bg-brand text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              Por mes
+            </button>
+          </div>
+        </div>
+        {chartPoints ? <IncomeBarChart points={chartPoints} granularity={granularity} /> : <p className="text-slate-400 text-sm">Cargando…</p>}
       </section>
 
       <section>

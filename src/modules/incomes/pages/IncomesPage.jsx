@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, XCircle } from 'lucide-react'
 import { incomeService } from '../../../services/incomeService'
 import { paymentService } from '../../../services/paymentService'
@@ -18,6 +18,9 @@ export default function IncomesPage() {
   const [error, setError] = useState('')
   const [annulItem, setAnnulItem] = useState(null)
   const [filters, setFilters] = useState({ from: '', to: '', categoryId: '' })
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+  const annullingRef = useRef(false)
 
   function load() {
     incomeService
@@ -37,6 +40,9 @@ export default function IncomesPage() {
 
   async function handleCreate(e) {
     e.preventDefault()
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
     setError('')
     try {
       await incomeService.create({
@@ -51,11 +57,15 @@ export default function IncomesPage() {
       load()
     } catch (err) {
       setError(err.message)
+    } finally {
+      savingRef.current = false
+      setSaving(false)
     }
   }
 
   async function submitAnnul(reason) {
-    if (!annulItem) return
+    if (!annulItem || annullingRef.current) return
+    annullingRef.current = true
     try {
       // Un abono a trabajo se anula por el endpoint de pagos; un ingreso manual, por el de ingresos.
       if (annulItem.source === 'PAGO') {
@@ -68,6 +78,8 @@ export default function IncomesPage() {
     } catch (err) {
       setError(err.message)
       setAnnulItem(null)
+    } finally {
+      annullingRef.current = false
     }
   }
 
@@ -183,8 +195,12 @@ export default function IncomesPage() {
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={inputClass} />
           </label>
           {error && <p className="text-sm text-rose-600">{error}</p>}
-          <button type="submit" className="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-2.5 text-sm">
-            Guardar
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full bg-brand hover:bg-brand-dark disabled:opacity-60 text-white font-semibold py-2.5 text-sm"
+          >
+            {saving ? 'Guardando…' : 'Guardar'}
           </button>
         </form>
       )}

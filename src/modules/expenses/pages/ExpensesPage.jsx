@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, XCircle } from 'lucide-react'
 import { expenseService } from '../../../services/expenseService'
 import { lookupService } from '../../../services/lookupService'
@@ -16,18 +16,32 @@ export default function ExpensesPage() {
   const [form, setForm] = useState(empty)
   const [error, setError] = useState('')
   const [annulItem, setAnnulItem] = useState(null)
+  const [filters, setFilters] = useState({ from: '', to: '', categoryId: '' })
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+  const annullingRef = useRef(false)
 
   function load() {
-    expenseService.list().then((p) => setItems(p.content))
+    expenseService
+      .list({
+        from: filters.from || undefined,
+        to: filters.to || undefined,
+        categoryId: filters.categoryId || undefined,
+      })
+      .then((p) => setItems(p.content))
   }
 
   useEffect(() => {
     load()
     lookupService.get().then((l) => setCategories(l.expenseCategories))
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters])
 
   async function handleCreate(e) {
     e.preventDefault()
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
     setError('')
     try {
       await expenseService.create({
@@ -42,11 +56,15 @@ export default function ExpensesPage() {
       load()
     } catch (err) {
       setError(err.message)
+    } finally {
+      savingRef.current = false
+      setSaving(false)
     }
   }
 
   async function submitAnnul(reason) {
-    if (!annulItem) return
+    if (!annulItem || annullingRef.current) return
+    annullingRef.current = true
     try {
       await expenseService.annul(annulItem.id, reason)
       setAnnulItem(null)
@@ -54,6 +72,8 @@ export default function ExpensesPage() {
     } catch (err) {
       setError(err.message)
       setAnnulItem(null)
+    } finally {
+      annullingRef.current = false
     }
   }
 
@@ -114,6 +134,8 @@ export default function ExpensesPage() {
         </button>
       </div>
 
+      <p className="text-xs text-slate-400 -mt-2">Gastos y compras del negocio.</p>
+
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white border border-slate-200 p-4 space-y-3 max-w-md">
           <label className="block">
@@ -164,11 +186,37 @@ export default function ExpensesPage() {
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={inputClass} />
           </label>
           {error && <p className="text-sm text-rose-600">{error}</p>}
-          <button type="submit" className="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-2.5 text-sm">
-            Guardar
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full bg-brand hover:bg-brand-dark disabled:opacity-60 text-white font-semibold py-2.5 text-sm"
+          >
+            {saving ? 'Guardando…' : 'Guardar'}
           </button>
         </form>
       )}
+
+      <div className="bg-white border border-slate-200 p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+        <label>
+          <span className="block text-xs font-medium text-slate-600 mb-1">Desde</span>
+          <input type="date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} className={inputClass} />
+        </label>
+        <label>
+          <span className="block text-xs font-medium text-slate-600 mb-1">Hasta</span>
+          <input type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} className={inputClass} />
+        </label>
+        <label className="col-span-2 md:col-span-1">
+          <span className="block text-xs font-medium text-slate-600 mb-1">Categoría</span>
+          <select value={filters.categoryId} onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })} className={inputClass}>
+            <option value="">Todas</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <ResponsiveList columns={columns} rows={items} keyExtractor={(i) => i.id} emptyMessage="No hay egresos registrados." />
 

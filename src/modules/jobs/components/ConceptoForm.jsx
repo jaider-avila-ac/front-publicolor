@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { inputClass } from '../../../components/FormField'
 
 const empty = {
@@ -42,14 +42,24 @@ export default function ConceptoForm({ lookups, initialValue, onSubmit, onCancel
         }
       : empty,
   )
+  const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
 
   function set(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    onSubmit(toPayload(form))
+    if (submittingRef.current) return
+    submittingRef.current = true
+    setSubmitting(true)
+    try {
+      await onSubmit(toPayload(form))
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -125,12 +135,16 @@ export default function ConceptoForm({ lookups, initialValue, onSubmit, onCancel
 
       <div className="flex gap-2 justify-end">
         {onCancel && (
-          <button type="button" onClick={onCancel} className="px-3 py-2 text-sm text-slate-600">
+          <button type="button" onClick={onCancel} disabled={submitting} className="px-3 py-2 text-sm text-slate-600">
             Cancelar
           </button>
         )}
-        <button type="submit" className="bg-brand hover:bg-brand-dark text-white text-sm font-semibold px-4 py-2">
-          Guardar concepto
+        <button
+          type="submit"
+          disabled={submitting}
+          className="bg-brand hover:bg-brand-dark disabled:opacity-60 text-white text-sm font-semibold px-4 py-2"
+        >
+          {submitting ? 'Guardando…' : 'Guardar concepto'}
         </button>
       </div>
     </form>

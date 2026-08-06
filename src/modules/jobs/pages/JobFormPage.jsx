@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2, X } from 'lucide-react'
 import { jobService } from '../../../services/jobService'
@@ -22,6 +22,7 @@ export default function JobFormPage() {
   const [error, setError] = useState('')
   const [pendingJobId, setPendingJobId] = useState(null)
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   const itemsSum = items.reduce((acc, it) => acc + Number(it.totalAmount || 0), 0)
 
@@ -62,12 +63,14 @@ export default function JobFormPage() {
 
   async function handleSubmit(e) {
     if (e) e.preventDefault()
+    if (savingRef.current) return
     setError('')
     setPendingJobId(null)
     if (items.length === 0) {
       setError('El trabajo debe tener al menos un concepto.')
       return
     }
+    savingRef.current = true
     setSaving(true)
     try {
       const job = await jobService.create({
@@ -85,6 +88,7 @@ export default function JobFormPage() {
       }
       setError(err.message)
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }
