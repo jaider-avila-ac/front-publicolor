@@ -108,7 +108,7 @@ export default function IncomesPage() {
       ),
     },
     { key: 'date', label: 'Fecha', render: (i) => formatDate(i.date) },
-    { key: 'category', label: 'Categoría', render: (i) => (i.source === 'PAGO' ? 'Abono a trabajo' : i.category?.name || '—') },
+    { key: 'category', label: 'Categoría', render: (i) => (i.source === 'PAGO' ? 'Pago a trabajo' : i.category?.name || '—') },
     {
       key: 'actions',
       label: 'Acciones',
@@ -143,7 +143,7 @@ export default function IncomesPage() {
         </button>
       </div>
 
-      <p className="text-xs text-slate-400 -mt-2">Incluye los ingresos manuales y los abonos a trabajos.</p>
+      <p className="text-xs text-slate-400 -mt-2">Incluye los ingresos manuales y los pagos a trabajos.</p>
 
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white border border-slate-200 p-4 space-y-3 max-w-md">
@@ -217,7 +217,7 @@ export default function IncomesPage() {
         <label className="col-span-2 md:col-span-1">
           <span className="block text-xs font-medium text-slate-600 mb-1">Categoría</span>
           <select value={filters.categoryId} onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })} className={inputClass}>
-            <option value="">Todas (incluye abonos)</option>
+            <option value="">Todas (incluye pagos)</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}

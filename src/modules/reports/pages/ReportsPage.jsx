@@ -211,7 +211,7 @@ export default function ReportsPage() {
               <p className="font-bold text-emerald-600">{formatCurrency(report.totalReceived)}</p>
             </div>
             <div className=" border border-slate-200 bg-white p-4">
-              <p className="text-xs text-slate-500 mb-1">Total pendiente</p>
+              <p className="text-xs text-slate-500 mb-1">Total pendiente por cobrar</p>
               <p className="font-bold text-rose-600">{formatCurrency(report.totalPending)}</p>
             </div>
             <div className=" border border-slate-200 bg-white p-4">

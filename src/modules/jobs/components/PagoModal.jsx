@@ -118,7 +118,7 @@ export default function PagoModal({ job, lookups, onClose, onSuccess }) {
 
       <ConfirmDialog
         open={!!overpayConfirm}
-        title="El abono supera el saldo pendiente"
+        title="El pago supera el saldo pendiente"
         message={overpayConfirm}
         confirmLabel="Registrar de todas formas"
         onConfirm={() => submit(null, true)}

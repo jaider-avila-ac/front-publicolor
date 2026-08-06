@@ -353,7 +353,7 @@ export default function JobDetailPage() {
 
       {/* Pagos */}
       <section>
-        <h2 className="text-sm font-semibold text-slate-500 mb-2">Pagos y abonos</h2>
+        <h2 className="text-sm font-semibold text-slate-500 mb-2">Pagos</h2>
 
         {payments.length > 0 && (
           <div className="space-y-2 mb-3">
@@ -449,7 +449,7 @@ export default function JobDetailPage() {
 
       <ConfirmDialog
         open={!!overpayConfirm}
-        title="El abono supera el saldo pendiente"
+        title="El pago supera el saldo pendiente"
         message={overpayConfirm}
         confirmLabel="Registrar de todas formas"
         onConfirm={() => submitPayment(null, true)}
